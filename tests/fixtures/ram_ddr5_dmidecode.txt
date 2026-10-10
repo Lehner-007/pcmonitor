@@ -1,0 +1,104 @@
+# dmidecode 3.5
+Getting SMBIOS data from sysfs.
+SMBIOS 3.8.0 present.
+# SMBIOS implementations newer than version 3.5.0 are not
+# fully supported by this version of dmidecode.
+
+Handle 0x000E, DMI type 17, 100 bytes
+Memory Device
+	Array Handle: 0x000B
+	Error Information Handle: 0x000D
+	Total Width: Unknown
+	Data Width: Unknown
+	Size: No Module Installed
+	Form Factor: Unknown
+	Set: None
+	Locator: DIMMA1
+	Bank Locator: P0 CHANNEL A
+	Type: Unknown
+	Type Detail: Unknown
+
+Handle 0x0010, DMI type 17, 100 bytes
+Memory Device
+	Array Handle: 0x000B
+	Error Information Handle: 0x000F
+	Total Width: 64 bits
+	Data Width: 64 bits
+	Size: 16 GB
+	Form Factor: DIMM
+	Set: None
+	Locator: DIMMA2
+	Bank Locator: P0 CHANNEL A
+	Type: DDR5
+	Type Detail: Synchronous Unbuffered (Unregistered)
+	Speed: 6000 MT/s
+	Manufacturer: Kingston
+	Serial Number: ANON-A2
+	Asset Tag: Not Specified
+	Part Number: KF560C30-16                   
+	Rank: 1
+	Configured Memory Speed: 6000 MT/s
+	Minimum Voltage: 1.1 V
+	Maximum Voltage: 1.1 V
+	Configured Voltage: 1.1 V
+	Memory Technology: DRAM
+	Memory Operating Mode Capability: Volatile memory
+	Firmware Version: Unknown
+	Module Manufacturer ID: Bank 2, Hex 0x98
+	Module Product ID: Unknown
+	Memory Subsystem Controller Manufacturer ID: Unknown
+	Memory Subsystem Controller Product ID: Unknown
+	Non-Volatile Size: None
+	Volatile Size: 16 GB
+	Cache Size: None
+	Logical Size: None
+
+Handle 0x0013, DMI type 17, 100 bytes
+Memory Device
+	Array Handle: 0x000B
+	Error Information Handle: 0x0012
+	Total Width: Unknown
+	Data Width: Unknown
+	Size: No Module Installed
+	Form Factor: Unknown
+	Set: None
+	Locator: DIMMB1
+	Bank Locator: P0 CHANNEL B
+	Type: Unknown
+	Type Detail: Unknown
+
+Handle 0x0015, DMI type 17, 100 bytes
+Memory Device
+	Array Handle: 0x000B
+	Error Information Handle: 0x0014
+	Total Width: 64 bits
+	Data Width: 64 bits
+	Size: 16 GB
+	Form Factor: DIMM
+	Set: None
+	Locator: DIMMB2
+	Bank Locator: P0 CHANNEL B
+	Type: DDR5
+	Type Detail: Synchronous Unbuffered (Unregistered)
+	Speed: 6000 MT/s
+	Manufacturer: Kingston
+	Serial Number: ANON-B2
+	Asset Tag: Not Specified
+	Part Number: KF560C30-16                   
+	Rank: 1
+	Configured Memory Speed: 6000 MT/s
+	Minimum Voltage: 1.1 V
+	Maximum Voltage: 1.1 V
+	Configured Voltage: 1.1 V
+	Memory Technology: DRAM
+	Memory Operating Mode Capability: Volatile memory
+	Firmware Version: Unknown
+	Module Manufacturer ID: Bank 2, Hex 0x98
+	Module Product ID: Unknown
+	Memory Subsystem Controller Manufacturer ID: Unknown
+	Memory Subsystem Controller Product ID: Unknown
+	Non-Volatile Size: None
+	Volatile Size: 16 GB
+	Cache Size: None
+	Logical Size: None
+

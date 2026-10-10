@@ -1,0 +1,2 @@
+/* Keep the system theme and readable regular-weight labels. */
+window label, window button, window columnview header { font-weight: normal; }

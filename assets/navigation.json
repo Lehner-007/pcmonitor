@@ -1,0 +1,18 @@
+{
+  "board": "mainboard-3d.png",
+  "cpu": "cpu-3d.png",
+  "ram": "ram-3d.png",
+  "gpu": "gpu-3d.png",
+  "display": "display-3d.png",
+  "usb": "usb-3d.png",
+  "disk": "storage-3d.png",
+  "lan": "network-3d.png",
+  "wifi": "wifi-3d.png",
+  "bluetooth": "bluetooth-3d.png",
+  "audio": "audio-3d.png",
+  "reader": "storage-3d.png",
+  "pci": "pcie-3d.png",
+  "sensors": "temperature-3d.png",
+  "system": "linux-3d.png",
+  "events": "connections-3d.png"
+}

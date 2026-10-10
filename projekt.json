@@ -1,0 +1,113 @@
+{
+  "program_id": "pcmonitor",
+  "name": "pcmonitor",
+  "authors": [],
+  "license": "GPL-3.0-only",
+  "image": "assets/programmbild.png",
+  "update_url": "https://raw.githubusercontent.com/Lehner-007/pcmonitor/main/version.json",
+  "source_url": "https://raw.githubusercontent.com/Lehner-007/pcmonitor/main/sprachpakete",
+  "settings": [],
+  "profiles_enabled": false,
+  "demo_enabled": false,
+  "tool_info": [
+    {
+      "name": "Python",
+      "kind": "python",
+      "apt": "python3"
+    },
+    {
+      "name": "GTK",
+      "kind": "gtk",
+      "apt": "gir1.2-gtk-4.0"
+    },
+    {
+      "name": "requests",
+      "kind": "module",
+      "module": "requests",
+      "apt": "python3-requests"
+    },
+    {
+      "name": "Beautiful Soup",
+      "kind": "module",
+      "module": "bs4",
+      "distribution": "beautifulsoup4",
+      "apt": "python3-bs4"
+    },
+    {
+      "name": "lshw",
+      "kind": "command",
+      "command": "lshw",
+      "apt": "lshw",
+      "version_args": [
+        "-version"
+      ]
+    },
+    {
+      "name": "dmidecode",
+      "kind": "command",
+      "command": "dmidecode",
+      "apt": "dmidecode"
+    },
+    {
+      "name": "lspci",
+      "kind": "command",
+      "command": "lspci",
+      "apt": "pciutils"
+    },
+    {
+      "name": "lsblk",
+      "kind": "command",
+      "command": "lsblk",
+      "apt": "util-linux"
+    },
+    {
+      "name": "ip",
+      "kind": "command",
+      "command": "ip",
+      "apt": "iproute2"
+    },
+    {
+      "name": "xrandr",
+      "kind": "command",
+      "command": "xrandr",
+      "apt": "x11-xserver-utils"
+    },
+    {
+      "name": "iw",
+      "kind": "command",
+      "command": "iw",
+      "apt": "iw"
+    },
+    {
+      "name": "nvidia-smi",
+      "kind": "command",
+      "command": "nvidia-smi",
+      "apt": "nvidia-utils (treiberabhängig)"
+    },
+    {
+      "name": "pactl",
+      "kind": "command",
+      "command": "pactl",
+      "apt": "pulseaudio-utils"
+    },
+    {
+      "name": "pkexec",
+      "kind": "command",
+      "command": "pkexec",
+      "apt": "pkexec"
+    },
+    {
+      "name": "systemd-detect-virt",
+      "kind": "command",
+      "command": "systemd-detect-virt",
+      "apt": "systemd"
+    },
+    {
+      "name": "dpkg-query",
+      "kind": "command",
+      "command": "dpkg-query",
+      "apt": "dpkg"
+    }
+  ],
+  "watermark": "assets/report_watermark.png"
+}
