@@ -1,4 +1,4 @@
-# pcmonitor 0.4.0
+# pcmonitor 0.5.0
 
 Lesende Hardware-Bestandsaufnahme für Linux Mint / Cinnamon mit GTK 4.
 
@@ -99,6 +99,10 @@ Ein reproduzierter Helfer-Absturz beim Python-Ende wurde behoben: Der Steuerthre
 Belegte Steckplätze zeigen Hersteller, Modell, Kapazität und konfigurierte Firmware-Datenrate. Ohne gültige konfigurierte Datenrate steht Nicht ermittelbar; die gemeldete Modulgeschwindigkeit ersetzt sie nicht. Ältere bestätigte Firmwarewerte tragen Altershinweis und ursprünglichen Zeitpunkt. Unplausible lshw-Rohwerte erscheinen ausschließlich in den Details als verworfen. Die Firmwarewerte sind keine aktuelle Taktmessung. Export und GUI verwenden denselben RAM-Zeileninhalt. Der Ergebnisbereich und die lokale Hilfe zeigen das festgelegte Wolfskopf-mit-D-Bild als dezentes Wasserzeichen.
 
 
-## Veröffentlichung 0.4.0
+## Veröffentlichung 0.5.0
 
 GitHub: https://github.com/Lehner-007/pcmonitor. DE/EN sind im Basispaket; acht weitere Sprachpakete mit Hilfe liegen getrennt unter sprachpakete. Diese zusätzlichen Übersetzungen wurden maschinell erstellt und benötigen muttersprachliche Prüfung. Das Benutzer-ZIP wird mit `python3 pcmonitor.py` gestartet; für eine erweiterte Erfassung `PCMONITOR_ADMIN_QUERY=1 python3 pcmonitor.py`. Die gesamte GUI nicht mit sudo starten. Im Quellordner bleiben start.sh und start-admin.sh verfügbar. Veröffentlichung über den geprüften Versionstag und GitHub Actions; ZIP und SHA-256-Prüfsumme werden als Release-Anhänge bereitgestellt.
+
+## DEB-Installation
+
+Mit `sudo apt install ./pcmonitor_0.5.0_all.deb` installieren. Zwei Desktop- und Menü-Starter: pcmonitor ohne Rechteabfrage sowie pcmonitor – Administrator mit einmaliger erhöhter Hardwareabfrage. Die Oberfläche läuft als Benutzer. Bei normalem Entfernen werden eigene Einstellungen und verwaltete Starter bereinigt; Upgrades erhalten diese Daten.

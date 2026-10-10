@@ -24,7 +24,16 @@ def config_dir():
     # Variable nicht und schreibt ausschließlich in den Benutzerbereich.
     if os.environ.get('PYTHON_TEMPLATE_DEV') == '1':
         return ROOT / '.config'
-    return Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))) / PROGRAM_ID
+    target = Path(os.environ.get('XDG_CONFIG_HOME', str(Path.home() / '.config'))) / PROGRAM_ID
+    if ROOT == Path('/usr/share/pcmonitor'):
+        registry = Path.home() / '.local/state/pcmonitor-locations.json'
+        try:
+            locations = json.loads(registry.read_text()).get('locations', []) if registry.exists() else []
+            if str(target) not in locations:
+                atomic_json(registry, dict(program_id=PROGRAM_ID, locations=locations + [str(target)]))
+        except (OSError, ValueError, TypeError):
+            pass
+    return target
 
 
 def atomic_json(path, data):

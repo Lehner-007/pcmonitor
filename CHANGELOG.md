@@ -1,3 +1,7 @@
+# 0.5.0
+
+Installierbares DEB, zwei Desktop-/Menüstarter und sichere Benutzerbereinigung. GitHub-Release liefert ZIP und DEB mit Prüfsummen.
+
 # Änderungen
 
 ## 0.4.0 – 10.10.2026

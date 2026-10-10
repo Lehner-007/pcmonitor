@@ -1,5 +1,1 @@
-pcmonitor 0.4.0 erkennt lokale Hardware mit einer unprivilegierten GTK-4-Oberfläche. Die optionale erweiterte Erfassung verwendet einen gemeinsamen lesenden Admin-Helfer. RAM-Übersicht, Firmwaredetails und Sitzungsspeicher sowie das festgelegte Wasserzeichen sind enthalten.
-
-Start des entpackten ZIPs: `python3 pcmonitor.py`. Voraussetzungen stehen in README.md. Keine Installation und kein DEB. Deutsch/Englisch enthalten; acht Zusatzsprachen mit Hilfe nachladbar, maschinell übersetzt und noch nicht muttersprachlich geprüft.
-
-64 Fachtests und GTK-Prüfungen bestanden. Hardwareumfang hängt von System und Zugriffsrechten ab; reale Passwortdialoganzahl bleibt systemabhängig und wurde hier nicht manuell bestätigt.
+pcmonitor 0.5.0: Installierbares DEB mit normalem und Administrator-Starter. Die Oberfläche bleibt ohne Root-Rechte. DE/EN mit Offline-Hilfe enthalten; acht weitere Sprachpakete maschinell übersetzt. ZIP und DEB mit SHA256SUMS. Isolierte Paketprüfung; keine Installation auf dem laufenden System.

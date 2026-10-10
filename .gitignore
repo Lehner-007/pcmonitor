@@ -9,3 +9,6 @@ SHA256SUMS
 PRUEFBERICHT*
 github-vorbereitung/
 tests/prepare_public_languages.py
+
+dist/
+.local-build/

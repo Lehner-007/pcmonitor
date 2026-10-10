@@ -21,7 +21,8 @@ jobs:
         run: |
           git describe --tags --exact-match | grep -Fx "v$(cat VERSION)"
           ./erstellezip.sh
-          sha256sum "pcmonitor-$(cat VERSION).zip" > SHA256SUMS
+          ./erstelledeb.sh
+          sha256sum "pcmonitor-$(cat VERSION).zip" "dist/pcmonitor_$(cat VERSION)_all.deb" > SHA256SUMS
       - name: Draft, upload and publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -29,5 +30,5 @@ jobs:
         run: |
           version="$(cat VERSION)"
           gh release create "v$version" --verify-tag --draft --title "pcmonitor $version" --notes-file RELEASE_NOTES.md
-          gh release upload "v$version" "pcmonitor-$version.zip" SHA256SUMS
+          gh release upload "v$version" "pcmonitor-$version.zip" "dist/pcmonitor_${version}_all.deb" SHA256SUMS
           gh release edit "v$version" --draft=false
