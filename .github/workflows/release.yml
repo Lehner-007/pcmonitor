@@ -2,6 +2,8 @@ name: Release
 on:
   push:
     tags: ['v*']
+    branches: [main]
+    paths: ['.github/workflows/release.yml']
 permissions:
   contents: write
 jobs:
@@ -9,10 +11,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Select existing version tag
+        shell: bash
+        run: |
+          git fetch --tags origin
+          git checkout --detach "v$(cat VERSION)"
       - name: Check version and package
         shell: bash
         run: |
-          test "${GITHUB_REF_NAME}" = "v$(cat VERSION)"
+          git describe --tags --exact-match | grep -Fx "v$(cat VERSION)"
           ./erstellezip.sh
           sha256sum "pcmonitor-$(cat VERSION).zip" > SHA256SUMS
       - name: Draft, upload and publish
@@ -21,6 +28,6 @@ jobs:
         shell: bash
         run: |
           version="$(cat VERSION)"
-          gh release create "$GITHUB_REF_NAME" --verify-tag --draft --title "pcmonitor $version" --notes-file RELEASE_NOTES.md
-          gh release upload "$GITHUB_REF_NAME" "pcmonitor-$version.zip" SHA256SUMS
-          gh release edit "$GITHUB_REF_NAME" --draft=false
+          gh release create "v$version" --verify-tag --draft --title "pcmonitor $version" --notes-file RELEASE_NOTES.md
+          gh release upload "v$version" "pcmonitor-$version.zip" SHA256SUMS
+          gh release edit "v$version" --draft=false
