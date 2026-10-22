@@ -3,6 +3,7 @@
   "name": "pcmonitor",
   "authors": [],
   "license": "GPL-3.0-only",
+  "deb": {"package": "pcmonitor"},
   "image": "assets/programmbild.png",
   "update_url": "https://raw.githubusercontent.com/Lehner-007/pcmonitor/main/version.json",
   "source_url": "https://raw.githubusercontent.com/Lehner-007/pcmonitor/main/sprachpakete",

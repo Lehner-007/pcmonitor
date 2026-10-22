@@ -10,6 +10,9 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+MAX_STDOUT = 8 * 1024 * 1024
+MAX_STDERR = 256 * 1024
+
 
 def trusted(path):
     path=Path(path).resolve()
@@ -22,7 +25,7 @@ def trusted(path):
 
 def stop(process):
     try:os.killpg(process.pid,signal.SIGTERM)
-    except ProcessLookupError:return
+    except ProcessLookupError:pass
     try:process.wait(timeout=1)
     except subprocess.TimeoutExpired:
         try:os.killpg(process.pid,signal.SIGKILL)
@@ -37,16 +40,38 @@ def probe(paths,args,cancel):
         if cancel.is_set():record['status']='cancelled'
         else:
             try:
-                process=subprocess.Popen([tool,*args],stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True,errors='replace',start_new_session=True,env={'PATH':'/usr/sbin:/usr/bin:/sbin:/bin','LC_ALL':'C'})
+                process=subprocess.Popen([tool,*args],stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True,env={'PATH':'/usr/sbin:/usr/bin:/sbin:/bin','LC_ALL':'C'})
+                buffers={'stdout':bytearray(),'stderr':bytearray()};limits={'stdout':MAX_STDOUT,'stderr':MAX_STDERR};exceeded=set()
+                def drain(name,stream):
+                    while True:
+                        chunk=stream.read(65536)
+                        if not chunk:return
+                        remaining=limits[name]-len(buffers[name])
+                        if remaining>0:buffers[name].extend(chunk[:remaining])
+                        if len(chunk)>remaining:exceeded.add(name)
+                readers=[threading.Thread(target=drain,args=(name,stream),daemon=True) for name,stream in [('stdout',process.stdout),('stderr',process.stderr)]]
+                for reader in readers:reader.start()
                 deadline=time.monotonic()+20
                 while True:
                     if cancel.is_set() or time.monotonic()>deadline:
                         stop(process);record['status']='cancelled' if cancel.is_set() else 'timeout'
-                        stdout,stderr=process.communicate();break
-                    try:
-                        stdout,stderr=process.communicate(timeout=.2);record['status']='ok' if process.returncode==0 else 'failed';break
-                    except subprocess.TimeoutExpired:continue
-                record.update(returncode=process.returncode,stdout=stdout,stderr=stderr)
+                        break
+                    if process.poll() is not None:
+                        record['status']='output_limit' if exceeded else 'ok' if process.returncode==0 else 'failed'
+                        break
+                    time.sleep(.025)
+                for reader in readers:reader.join(timeout=.5)
+                if any(reader.is_alive() for reader in readers):
+                    stop(process)
+                    for reader in readers:reader.join(timeout=1)
+                for stream in (process.stdout,process.stderr):
+                    try:stream.close()
+                    except OSError:pass
+                if record['status'] in ('ok','failed') and exceeded:
+                    record['status']='output_limit'
+                record.update(returncode=process.returncode,
+                    stdout=buffers['stdout'].decode('utf-8',errors='replace'),
+                    stderr=buffers['stderr'].decode('utf-8',errors='replace'))
             except OSError:record['status']='failed'
     record['captured_at']=datetime.now().astimezone().strftime('%d.%m.%Y %H:%M:%S %Z')
     return record

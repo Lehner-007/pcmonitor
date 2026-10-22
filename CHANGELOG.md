@@ -1,3 +1,30 @@
+## 0.5.4 – 22.10.2026
+
+- Prozessausgaben nichtblockierend mit selectors lesen; keine blockierenden Leserthreads.
+- Prozessgruppen unabhängig vom Status des Elternprozesses nach SIGTERM begrenzt mit SIGKILL bereinigen.
+- Nachkommen nach Prozessende als Fehler melden und Gesamtlaufzeit einschließlich Bereinigung begrenzen.
+- Regressionstests für SIGTERM-ignorierende und umgeleitete Nachkommen sowie normale Ausgabe, Ausgabegrenzen, Zeitüberschreitung und Abbruch ergänzt.
+
+## 0.5.3 – 22.10.2026
+
+- Automatische Versionsprüfung nur bei aktivierter, fälliger Option; manuelle Prüfung bleibt verfügbar.
+- DEB-Paketkennung ergänzt und Downloadprüfung für Prüfsumme, Paketname, Version und Architektur abgesichert.
+- Unbekannte Laufwerksrotation bleibt ausdrücklich unbekannt.
+- Systemwerkzeug-Ausgaben und Admin-Protokoll sind begrenzt; Abbruch und Zeitüberschreitung beenden und sammeln die Prozessgruppe ein.
+- Ereignisverlauf auf 1000 Einträge begrenzt; ausgelassene Anzahl und Abdeckung sind in Oberfläche und Export sichtbar.
+- Inventur prüft Abbruchsignale zwischen Hardwarebereichen und übernimmt keine Teilgeneration.
+- Aktualisierte Lieferdokumentation und lokal geprüfte ZIP-/DEB-Kandidaten.
+
+## 0.5.2 – 22.10.2026
+
+Die Erstinventur hat Vorrang vor der automatischen Updateprüfung; sie kann nicht mehr durch deren laufenden Hintergrundauftrag entfallen. GUI-Prüfungen verwenden eine lokale Updateantwort.
+
+Gemeinsame Bibliothek josef_basis 0.1.0 lokal eingebunden; vorhandene Schnittstellen beibehalten.
+
+## 0.5.1 — 11.10.2026
+
+- Projektstart über .start.sh und ausführbare Icon-Verknüpfung; interne Verweise angepasst.
+
 # 0.5.0
 
 Installierbares DEB, zwei Desktop-/Menüstarter und sichere Benutzerbereinigung. GitHub-Release liefert ZIP und DEB mit Prüfsummen.

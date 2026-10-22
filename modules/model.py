@@ -20,7 +20,7 @@ DEFAULTS.update({field['key']: field['default'] for field in PROJECT['settings']
 
 
 def config_dir():
-    # start.sh ist der Entwicklungsstart. Ein installierter Starter setzt diese
+    # .start.sh ist der Entwicklungsstart. Ein installierter Starter setzt diese
     # Variable nicht und schreibt ausschließlich in den Benutzerbereich.
     if os.environ.get('PYTHON_TEMPLATE_DEV') == '1':
         return ROOT / '.config'

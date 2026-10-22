@@ -1,18 +1,18 @@
-# pcmonitor 0.5.0
+# pcmonitor 0.5.4
 
 Lesende Hardware-Bestandsaufnahme für Linux Mint / Cinnamon mit GTK 4.
 
 ## Start
 
-Normal: `./start.sh`
+Normal: `./.start.sh`
 
 Erweiterte RAM-/Firmwareabfrage: `./start-admin.sh`
 
-Der ausdrücklich gewählte Admin-Starter belässt die GUI beim normalen Benutzer. Pro erweiterter Erfassung startet höchstens ein `pkexec` einen festen Helfer, der `lshw -json` und `dmidecode --type 17` direkt ausführt. Jede Quelle hat eigenen Status, Rückgabecode und Erfassungszeitpunkt. Ablehnung erzeugt keine zweite Anfrage; normale Erfassung bleibt verfügbar. F5 fordert in diesem Modus eine neue Erfassung an; parallele Erfassungen sind gesperrt. Detailklick, Export und Geräteüberwachung erhöhen keine Rechte. start.sh erhöht nichts. Nicht das ganze Programm mit sudo starten.
+Der ausdrücklich gewählte Admin-Starter belässt die GUI beim normalen Benutzer. Pro erweiterter Erfassung startet höchstens ein `pkexec` einen festen Helfer, der `lshw -json` und `dmidecode --type 17` direkt ausführt. Jede Quelle hat eigenen Status, Rückgabecode und Erfassungszeitpunkt. Ablehnung erzeugt keine zweite Anfrage; normale Erfassung bleibt verfügbar. F5 fordert in diesem Modus eine neue Erfassung an; parallele Erfassungen sind gesperrt. Detailklick, Export und Geräteüberwachung erhöhen keine Rechte. .start.sh erhöht nichts. Nicht das ganze Programm mit sudo starten.
 
 Der Helfer nutzt ausschließlich feste Systemwerkzeuge und System-Python mit `-I -S`, ohne Projekt-, Benutzer- oder sitecustomize-Imports. Werkzeuglaufzeit jeweils höchstens 20 Sekunden; gesamte Rechteanforderung einschließlich Dialog höchstens 120 Sekunden. Abbrechen oder Schließen beendet über den Steuerkanal die Werkzeug-Prozessgruppen. Bei Installation müssen Helfer, Interpreter, Standardbibliothek und Werkzeuge samt Pfaden root gehören und gegen Benutzeränderung geschützt sein; für installierte Helfer unter /usr oder /opt wird dies geprüft. Der Entwicklungsstand installiert keinen dauerhaften privilegierten Dienst. Die Zahl sichtbarer Passwortdialoge bestimmt PolicyKit; das Programm startet höchstens eine Rechteanforderung pro Erfassung.
 
-CLI: `./start.sh --help`, `--version`, `--author`. Autor ist nicht hinterlegt, wird nicht erfunden.
+CLI: `./.start.sh --help`, `--version`, `--author`. Autor ist nicht hinterlegt, wird nicht erfunden.
 
 ## Bedienung
 
@@ -28,11 +28,11 @@ Geräteänderungen starten je Datenquelle mit einer Baseline ab der ersten erfol
 
 Pflicht: Python 3.10+, python3-gi, gir1.2-gtk-4.0. Die übernommenen gemeinsamen Sprach-/Updatebausteine benötigen außerdem python3-requests und python3-bs4. Nichts wird automatisch installiert.
 
-Optional: lshw (RAM-Module), pciutils/lspci (PCI-Namen), util-linux/lsblk (Laufwerke), iproute2/ip (IP-Adressen), x11-xserver-utils/xrandr (aktueller Monitor-Modus), iw (SSID/Signal/Bitraten), dmidecode (explizit mit Einheit gemeldete RAM-Geschwindigkeit, nur soweit lesbar), nvidia-smi (NVIDIA-VRAM über PCI-Adresse), pactl (Audio-Ein-/Ausgänge und Standardgerät), BlueZ-D-Bus-Dienst (Bluetooth-Endgeräte), dpkg-query (lshw-Paketversion), systemd-detect-virt (Virtualisierung), pkexec/PolicyKit (gesonderter Admin-Start). Fehlende Kernwerkzeuge und Abfragefehler stehen in Systeminformationen. Ohne iw bleiben SSID/Signal/Bitraten unbekannt; die fehlende Quelle wird diagnostiziert. GitHub-Quelle: https://github.com/Lehner-007/pcmonitor. Versionsprüfung und Sprachnachladen erfolgen ausschließlich auf Benutzeraktion.
+Optional: lshw (RAM-Module), pciutils/lspci (PCI-Namen), util-linux/lsblk (Laufwerke), iproute2/ip (IP-Adressen), x11-xserver-utils/xrandr (aktueller Monitor-Modus), iw (SSID/Signal/Bitraten), dmidecode (explizit mit Einheit gemeldete RAM-Geschwindigkeit, nur soweit lesbar), nvidia-smi (NVIDIA-VRAM über PCI-Adresse), pactl (Audio-Ein-/Ausgänge und Standardgerät), BlueZ-D-Bus-Dienst (Bluetooth-Endgeräte), dpkg-query (lshw-Paketversion), systemd-detect-virt (Virtualisierung), pkexec/PolicyKit (gesonderter Admin-Start). Fehlende Kernwerkzeuge und Abfragefehler stehen in Systeminformationen. Ohne iw bleiben SSID/Signal/Bitraten unbekannt; die fehlende Quelle wird diagnostiziert. GitHub-Quelle: https://github.com/Lehner-007/pcmonitor. Automatische Versionsprüfungen laufen nur, wenn sie aktiviert und laut Intervall fällig sind; die manuelle Prüfung bleibt verfügbar. Zusätzliche Sprachpakete werden nur auf Benutzeraktion geladen.
 
 ## Daten und Grenzen
 
-/sys und /proc sind die primären Quellen. Prozesse starten ohne Shell mit festem Argumentvektor und begrenzter Laufzeit. Hardware-/Systemeinstellungen werden nicht verändert. Nur eigene Konfiguration, Protokolle und angeforderte Exporte werden geschrieben. Entwicklungsstart: `.config` im Projekt; direkter installierter Python-Start: XDG-Konfiguration des Benutzers.
+/sys und /proc sind die primären Quellen. Prozesse starten ohne Shell mit festem Argumentvektor und begrenzter Laufzeit. Ausgaben werden nichtblockierend gelesen; die Prozessgruppenbereinigung umfasst Nachkommen und ist zeitlich begrenzt. Hardware-/Systemeinstellungen werden nicht verändert. Nur eigene Konfiguration, Protokolle und angeforderte Exporte werden geschrieben. Entwicklungsstart: `.config` im Projekt; direkter installierter Python-Start: XDG-Konfiguration des Benutzers.
 
 Ein Linux-Gerätepfad ist keine nachgewiesene Gehäusebuchse. USB-Hubs, logische Netzwerkschnittstellen, DRM-Konnektoren und MMC-Hosts werden entsprechend gekennzeichnet. Nicht erkannte Geräte bedeuten **nicht Leer**. Nur explizit von lshw als leer gemeldete RAM-Bänke erhalten Leer. PCI-Steckplätze ohne zugeordnetes Endgerät bleiben unbekannt. Eine fest verbaute PCI-Bridge/Root-Port allein gilt nicht als belegte Karte. Die Art-Spalte unterscheidet Komponenten, Hubs, Hardwareadapter, virtuelle Schnittstellen, Laufwerke, Partitionen und echte Steckplatzdatensätze. Physische SATA-/M.2-/USB-Buchsen und Gehäusepositionen sind im Allgemeinen nicht zuverlässig lesbar.
 
@@ -44,7 +44,7 @@ RAM-Module hängen von Firmware und Leserechten ab. RAM-Quellwerte werden nicht 
 
 GUI-Prüfung in laufender Sitzung: `PYTHONPATH=. PYTHON_TEMPLATE_DEV=1 PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 tests/smoke_gui.py`
 
-Quellcode und Releases: https://github.com/Lehner-007/pcmonitor. Kein DEB in diesem Release.
+Der veröffentlichte Stand 0.5.4 enthält ein geprüftes DEB mit SHA-256-Prüfsumme. Die Testsuite und die manuellen Prüfungen auf dem Ziel-PC sind getrennt dokumentiert.
 
 LAN: operstate, carrier und Linkgeschwindigkeit werden getrennt ausgelesen; der Adapterstatus behauptet keine Buchsenbelegung. WLAN: SSID nur mit Export-Opt-in, Signal sowie RX-/TX-Rate separat. Audio: ALSA-Hardwarebeschreibung plus verfügbare PulseAudio-/PipeWire-Ein-/Ausgänge, aktive Ports und Standardgerät; benutzerdefinierte Beschreibungen separat mit Opt-in. Keine Verbindung, Auswahl, Lautstärke oder Systemkonfiguration wird verändert.
 
@@ -99,10 +99,16 @@ Ein reproduzierter Helfer-Absturz beim Python-Ende wurde behoben: Der Steuerthre
 Belegte Steckplätze zeigen Hersteller, Modell, Kapazität und konfigurierte Firmware-Datenrate. Ohne gültige konfigurierte Datenrate steht Nicht ermittelbar; die gemeldete Modulgeschwindigkeit ersetzt sie nicht. Ältere bestätigte Firmwarewerte tragen Altershinweis und ursprünglichen Zeitpunkt. Unplausible lshw-Rohwerte erscheinen ausschließlich in den Details als verworfen. Die Firmwarewerte sind keine aktuelle Taktmessung. Export und GUI verwenden denselben RAM-Zeileninhalt. Der Ergebnisbereich und die lokale Hilfe zeigen das festgelegte Wolfskopf-mit-D-Bild als dezentes Wasserzeichen.
 
 
-## Veröffentlichung 0.5.0
+## Veröffentlichung 0.5.1
 
-GitHub: https://github.com/Lehner-007/pcmonitor. DE/EN sind im Basispaket; acht weitere Sprachpakete mit Hilfe liegen getrennt unter sprachpakete. Diese zusätzlichen Übersetzungen wurden maschinell erstellt und benötigen muttersprachliche Prüfung. Das Benutzer-ZIP wird mit `python3 pcmonitor.py` gestartet; für eine erweiterte Erfassung `PCMONITOR_ADMIN_QUERY=1 python3 pcmonitor.py`. Die gesamte GUI nicht mit sudo starten. Im Quellordner bleiben start.sh und start-admin.sh verfügbar. Veröffentlichung über den geprüften Versionstag und GitHub Actions; ZIP und SHA-256-Prüfsumme werden als Release-Anhänge bereitgestellt.
+GitHub: https://github.com/Lehner-007/pcmonitor. DE/EN sind im Basispaket; acht weitere Sprachpakete mit Hilfe liegen getrennt unter sprachpakete. Diese zusätzlichen Übersetzungen wurden maschinell erstellt und benötigen muttersprachliche Prüfung. Das Benutzer-ZIP wird mit `python3 pcmonitor.py` gestartet; für eine erweiterte Erfassung `PCMONITOR_ADMIN_QUERY=1 python3 pcmonitor.py`. Die gesamte GUI nicht mit sudo starten. Im Quellordner bleiben .start.sh und start-admin.sh verfügbar. Veröffentlichung über den geprüften Versionstag und GitHub Actions; ZIP und SHA-256-Prüfsumme werden als Release-Anhänge bereitgestellt.
 
 ## DEB-Installation
 
-Mit `sudo apt install ./pcmonitor_0.5.0_all.deb` installieren. Zwei Desktop- und Menü-Starter: pcmonitor ohne Rechteabfrage sowie pcmonitor – Administrator mit einmaliger erhöhter Hardwareabfrage. Die Oberfläche läuft als Benutzer. Bei normalem Entfernen werden eigene Einstellungen und verwaltete Starter bereinigt; Upgrades erhalten diese Daten.
+Mit `sudo apt install ./pcmonitor_0.5.1_all.deb` installieren. Zwei Desktop- und Menü-Starter: pcmonitor ohne Rechteabfrage sowie pcmonitor – Administrator mit einmaliger erhöhter Hardwareabfrage. Die Oberfläche läuft als Benutzer. Bei normalem Entfernen werden eigene Einstellungen und verwaltete Starter bereinigt; Upgrades erhalten diese Daten.
+
+## Version 0.5.4
+
+Diese Version behebt bestätigte Probleme mit automatischen Updateprüfungen, unbekannten Laufwerkswerten, unbeschränkten Werkzeugausgaben und unbegrenzt wachsendem Ereignisverlauf. Die Prozessbereinigung beendet auch Nachkommen eines bereits beendeten Elternprozesses. Nichtblockierende Pipes verhindern unbegrenztes Warten auf geerbte Ausgabepipes; Zeitüberschreitung und Abbruch umfassen eine feste Bereinigungsfrist. Ereignisse zeigen ihren erfassten Zeitraum und ausgelassene ältere Einträge an. Paketdownloads werden vor Verwendung auf SHA-256, Paketkennung, Version und Architektur geprüft. Der Release enthält die geprüften Programmdateien und das installierbare DEB. Hardware- und Administratorabfragen auf dem Ziel-PC bleiben als separate manuelle Abnahme ausgewiesen.
+
+Das DEB und seine SHA-256-Prüfsumme sind im GitHub-Release 0.5.4 verfügbar; `version.json` verweist auf diesen geprüften Release.

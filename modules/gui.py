@@ -383,8 +383,8 @@ class MainWindow(Gtk.ApplicationWindow):
         return True
 
     def initial_update(self):
-        if not self.busy:
-            self.check_update(PROJECT['update_url'],automatic=True)
+        if not self.busy and update_due(self.opts):
+            self.check_update(self.opts['update_url'], automatic=True)
         return False
 
     def automatic_update(self):
@@ -401,7 +401,9 @@ class MainWindow(Gtk.ApplicationWindow):
                 controls['download'].set_sensitive(bool(newer and self.update_info.get('deb') and not self.busy))
 
     def check_update(self, source=None, automatic=False):
-        source=PROJECT['update_url']
+        if automatic and not update_due(self.opts):
+            return False
+        source=source or self.opts.get('update_url', PROJECT['update_url'])
         if not source.strip() or 'xxxx' in source.split('/'):
             self.update_status_key='software_unconfigured';self.refresh_update_controls();return
         self.update_status_key='software_checking';self.refresh_update_controls()

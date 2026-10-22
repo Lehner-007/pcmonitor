@@ -26,10 +26,10 @@ class FirmwareTests(unittest.TestCase):
         self.assertEqual(module_firmware(source,'dimma2')['status'],'ram_fw_unmatched')
 
     def test_normal_and_elevated_queries(self):
-        with patch('modules.ram_firmware.shutil.which',return_value='/fixture/dmidecode'),patch('modules.ram_firmware.subprocess.run',return_value=self.result()) as run:
+        with patch('modules.ram_firmware.shutil.which',return_value='/fixture/dmidecode'),patch('modules.ram_firmware.run_capped',return_value=('ok',0,FIXTURE,'')) as run:
             query_memory_firmware(False)
         self.assertEqual(run.call_args.args[0],['/fixture/dmidecode','--type','17'])
-        with patch('modules.ram_firmware.subprocess.run',side_effect=AssertionError('second privilege request')):
+        with patch('modules.ram_firmware.run_capped',side_effect=AssertionError('second privilege request')):
             source=self.source()
         self.assertEqual(source['status'],'ram_fw_ok')
 
@@ -60,7 +60,7 @@ class FirmwareTests(unittest.TestCase):
 
     def test_firmware_failure_does_not_discard_lshw_banks(self):
         hw={'id':'memory','children':[{'id':'bank:'+str(i),'slot':slot,'description':'DIMM [empty]' if i%2==0 else 'DIMM DDR5','size':None if i%2==0 else 17179869184,'product':'KF560C30-16','vendor':'Kingston','serial':'ANON-'+slot,'clock':1705032704} for i,slot in enumerate(('DIMMA1','DIMMA2','DIMMB1','DIMMB2'))]}
-        def command(args,diagnostics):return hw if args[0]=='lshw' else {}
+        def command(args,diagnostics,*_):return hw if args[0]=='lshw' else {}
         for source in (self.source(),dict(status='ram_fw_denied',devices={},captured_at='10.10.2026 12:00:00',warning='')):
             with patch.dict('os.environ',{'PCMONITOR_ADMIN_QUERY':'0'}),patch('modules.inventory.query_memory_firmware',return_value=source),patch('modules.inventory.json_command',side_effect=command),patch('modules.inventory.run',return_value=''),patch('modules.inventory.bluez_devices',return_value=[]):snapshot=inventory()
             self.assertTrue(snapshot['ram_capture']['confirmed'])

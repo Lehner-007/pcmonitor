@@ -277,6 +277,7 @@
   "ram_fw_timeout": "dmidecode-Abfrage: Zeitüberschreitung",
   "ram_fw_denied": "Erweiterte dmidecode-Abfrage abgelehnt oder abgebrochen",
   "ram_fw_failed": "dmidecode-Abfrage fehlgeschlagen",
+  "ram_fw_output_limit": "dmidecode-Ausgabegrenze erreicht",
   "ram_fw_incomplete": "Firmwareangaben unvollständig oder widersprüchlich",
   "ram_fw_conflict": "Steckplatzzuordnung oder Firmwareangaben widersprüchlich",
   "ram_fw_unmatched": "Keine eindeutige Firmwarezuordnung zum Steckplatz",
@@ -301,5 +302,9 @@
   "admin_source_failed": "Quellenabfrage fehlgeschlagen",
   "admin_source_timeout": "Quellenabfrage: Zeitüberschreitung",
   "admin_source_cancelled": "Quellenabfrage abgebrochen",
+  "admin_source_output_limit": "Ausgabegrenze der Quelle erreicht",
+  "events_count": "Gespeicherte Ereignisse: {count}",
+  "events_coverage": "Abdeckung: {start} bis {end}",
+  "events_omitted": "Ältere Ereignisse ausgelassen: {count}",
   "ram_firmware_short": "Firmware"
 }

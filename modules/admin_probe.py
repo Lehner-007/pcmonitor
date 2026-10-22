@@ -1,5 +1,7 @@
 """Exactly one pkexec request for a fixed isolated read-only probe."""
 import json
+import os
+import signal
 import shutil
 import subprocess
 import threading
@@ -8,6 +10,23 @@ import logging
 import re
 from pathlib import Path
 from .admin_helper import trusted
+
+MAX_HELPER_STDOUT=20*1024*1024
+MAX_HELPER_STDERR=512*1024
+
+
+def _stop_group(process):
+    try:os.killpg(process.pid,signal.SIGTERM)
+    except (ProcessLookupError,AttributeError):
+        try:process.terminate()
+        except (ProcessLookupError,AttributeError):pass
+    try:process.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        try:os.killpg(process.pid,signal.SIGKILL)
+        except (ProcessLookupError,AttributeError):
+            try:process.kill()
+            except (ProcessLookupError,AttributeError):pass
+        process.wait()
 
 
 def _system_stdlib():
@@ -62,39 +81,55 @@ def query_admin_sources(cancel_event=None):
     try:code=helper.read_text()
     except OSError as exc:return _finish('failed','helper_read',error=type(exc).__name__)
     try:
-        process=subprocess.Popen([pkexec,python,'-I','-S','-c',code],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+        process=subprocess.Popen([pkexec,python,'-I','-S','-c',code],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True)
     except OSError as exc:return _finish('failed','process_start',error=type(exc).__name__)
-    output={}
+    output={'stdout':bytearray(),'stderr':bytearray()};limits={'stdout':MAX_HELPER_STDOUT,'stderr':MAX_HELPER_STDERR};exceeded=set();output_lock=threading.Lock();limit_reached=threading.Event()
     def drain(name,stream):
-        output[name]=stream.read();stream.close()
+        while True:
+            chunk=stream.read(65536)
+            if not chunk:break
+            with output_lock:
+                remaining=limits[name]-len(output[name])
+                if remaining>0:output[name].extend(chunk[:remaining])
+                if len(chunk)>remaining:exceeded.add(name);limit_reached.set()
+        stream.close()
     readers=[threading.Thread(target=drain,args=(name,stream),daemon=True) for name,stream in [('stdout',process.stdout),('stderr',process.stderr)]]
     for reader in readers:reader.start()
     deadline=time.monotonic()+120
     status=None
     while process.poll() is None:
+        if limit_reached.is_set():
+            status='output_limit'
+            try:process.stdin.close()
+            except (OSError,ValueError):pass
+            _stop_group(process)
+            break
         if (cancel_event and cancel_event.is_set()) or time.monotonic()>deadline:
             status='cancelled' if cancel_event and cancel_event.is_set() else 'timeout'
-            process.stdin.close()  # cooperating elevated helper terminates its tool groups
-            try:process.wait(timeout=4)
-            except subprocess.TimeoutExpired:
-                process.terminate()
-                try:process.wait(timeout=2)
-                except subprocess.TimeoutExpired:process.kill();process.wait()
+            try:process.stdin.close()  # cooperating elevated helper terminates its tool groups
+            except (OSError,ValueError):pass
+            _stop_group(process)
             break
         time.sleep(.05)
     if not process.stdin.closed:process.stdin.close()
     for reader in readers:reader.join(timeout=2)
-    if status:return _finish(status,'process_wait',returncode=process.returncode,stderr=output.get('stderr',b''))
-    if process.returncode:return _finish('denied' if process.returncode in (126,127) else 'failed','process_exit',returncode=process.returncode,stderr=output.get('stderr',b''))
+    if any(reader.is_alive() for reader in readers):
+        _stop_group(process)
+        for reader in readers:reader.join(timeout=1)
+    captured={name:bytes(value) for name,value in output.items()}
+    if status:return _finish(status,'process_wait',returncode=process.returncode,stderr=captured['stderr'])
+    if process.returncode:return _finish('denied' if process.returncode in (126,127) else 'failed','process_exit',returncode=process.returncode,stderr=captured['stderr'])
     try:
-        result=json.loads(output.get('stdout',b''))
-    except (ValueError,TypeError) as exc:return _finish('failed','json_decode',returncode=process.returncode,stderr=output.get('stderr',b''),error=type(exc).__name__)
+        if exceeded:raise ValueError('helper output limit')
+        result=json.loads(captured['stdout'])
+    except (ValueError,TypeError) as exc:
+        return _finish('output_limit' if exceeded else 'failed','output_limit' if exceeded else 'json_decode',returncode=process.returncode,stderr=captured['stderr'],error=type(exc).__name__)
     try:
         if result.get('schema')!=1 or result.get('uid')!=0:raise ValueError('invalid probe')
         sources=result['sources']
         for key in ('lshw','dmidecode'):
             record=sources[key]
-            if record['status'] not in ('ok','missing','failed','timeout','cancelled'):raise ValueError('invalid source')
+            if record['status'] not in ('ok','missing','failed','timeout','cancelled','output_limit'):raise ValueError('invalid source')
             if not isinstance(record['stdout'],str) or not isinstance(record['captured_at'],str):raise ValueError('invalid source')
-        return _finish('ok','complete',sources,process.returncode,output.get('stderr',b''))
-    except (ValueError,TypeError,KeyError,AttributeError) as exc:return _finish('failed','schema_validate',returncode=process.returncode,stderr=output.get('stderr',b''),error=type(exc).__name__)
+        return _finish('ok','complete',sources,process.returncode,captured['stderr'])
+    except (ValueError,TypeError,KeyError,AttributeError) as exc:return _finish('failed','schema_validate',returncode=process.returncode,stderr=captured['stderr'],error=type(exc).__name__)

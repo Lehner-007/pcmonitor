@@ -26,7 +26,7 @@ class AdminProbeTests(unittest.TestCase):
         stdlib.start();self.addCleanup(stdlib.stop)
 
     def test_one_fixed_isolated_request_and_separate_sources(self):
-        for lshw,dmi in [('ok','ok'),('missing','ok'),('failed','ok'),('ok','missing'),('ok','timeout')]:
+        for lshw,dmi in [('ok','ok'),('missing','ok'),('failed','ok'),('ok','missing'),('ok','timeout'),('output_limit','ok')]:
             process=FakeProcess(records(lshw,dmi))
             with patch('modules.admin_probe.shutil.which',return_value='/fixture/pkexec'),patch('modules.admin_probe.trusted',return_value=True),patch('modules.admin_probe.subprocess.Popen',return_value=process) as launch:
                 result=query_admin_sources()
@@ -88,7 +88,21 @@ class AdminProbeTests(unittest.TestCase):
         with patch('modules.admin_probe.shutil.which',return_value='/fixture/pkexec'),patch('modules.admin_probe.trusted',return_value=True),patch('modules.admin_probe.subprocess.Popen',return_value=FakeProcess(data)):
             self.assertEqual(query_admin_sources()['status'],'failed')
 
+    def test_outer_helper_output_limit_never_parses_partial_json(self):
+        data=records();process=FakeProcess(data)
+        process.stdout=io.BytesIO((json.dumps(data)+' '*200).encode())
+        with patch('modules.admin_probe.MAX_HELPER_STDOUT',64),patch('modules.admin_probe.shutil.which',return_value='/fixture/pkexec'),patch('modules.admin_probe.trusted',return_value=True),patch('modules.admin_probe.subprocess.Popen',return_value=process):
+            result=query_admin_sources()
+        self.assertEqual(result['status'],'output_limit')
+        self.assertEqual(result['diagnostic']['stage'],'output_limit')
+
 class AdminDiagnosticTests(unittest.TestCase):
+    def test_source_output_limit_is_bounded_and_reported(self):
+        with patch('modules.admin_helper.MAX_STDOUT',1024),patch('modules.admin_helper.trusted',return_value=True):
+            result=probe(('/usr/bin/python3',),('-c','import sys;sys.stdout.write("x"*5000)'),threading.Event())
+        self.assertEqual(result['status'],'output_limit')
+        self.assertEqual(len(result['stdout']),1024)
+
     def test_helper_exit_with_open_control_pipe(self):
         # Reproduce interpreter shutdown with the same live watcher, no hardware.
         code=Path('modules/admin_helper.py').read_text().split("if __name__=='__main__':")[0]

@@ -7,7 +7,12 @@ os.environ.pop('PYTHON_TEMPLATE_DEV',None);os.environ['XDG_CONFIG_HOME']=_config
 import gi
 gi.require_version('Gtk','4.0')
 from gi.repository import Gtk,GLib
+from unittest.mock import patch
+from modules.model import VERSION
 from modules.monitor_gui import Application
+# Netzwerkunabhängige Prüfung der echten Startreihenfolge.
+_update_source=patch("modules.gui.release_info",return_value={"version":VERSION})
+_update_source.start()
 from modules.inventory import SECTIONS
 from modules.menus import descendants
 from test_ram_snapshot import generation
@@ -82,5 +87,6 @@ with patch('modules.monitor_gui.inventory',return_value=initial),patch('modules.
     GLib.timeout_add_seconds(2,first)
     GLib.timeout_add_seconds(15,lambda:(failures.append('timeout'),app.quit(),False)[-1])
     app.run([])
+_update_source.stop()
 _config.cleanup()
 if failures:raise RuntimeError(failures)

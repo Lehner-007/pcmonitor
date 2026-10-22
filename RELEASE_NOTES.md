@@ -1,1 +1,3 @@
-pcmonitor 0.5.0: Installierbares DEB mit normalem und Administrator-Starter. Die Oberfläche bleibt ohne Root-Rechte. DE/EN mit Offline-Hilfe enthalten; acht weitere Sprachpakete maschinell übersetzt. ZIP und DEB mit SHA256SUMS. Isolierte Paketprüfung; keine Installation auf dem laufenden System.
+pcmonitor 0.5.4
+
+Behebt die Prozessbereinigung bei Zeitüberschreitung und Abbruch, auch wenn Nachkommen nach dem Ende des Hauptprozesses Ausgabepipes offen halten. Prozessausgaben werden nichtblockierend gelesen; die Bereinigungszeit ist begrenzt. Regressionstests decken geerbte Pipes und SIGTERM-ignorierende Nachkommen ab.

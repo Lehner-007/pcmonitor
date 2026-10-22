@@ -43,16 +43,22 @@ def download_directory():
 
 
 def check_package(path,info,context):
+    deb=info.get('deb') if isinstance(info,dict) else None
+    if not isinstance(deb,dict) or not re.fullmatch(r'[a-fA-F0-9]{64}',str(deb.get('sha256',''))):
+        raise ValueError('Unvollständige DEB-Prüfsummenangaben')
+    package=PROJECT.get('deb',{}).get('package') if isinstance(PROJECT.get('deb'),dict) else None
+    if not isinstance(package,str) or not re.fullmatch(r'[a-z0-9][a-z0-9+.-]*',package):
+        raise ValueError('DEB-Paketkennung fehlt in projekt.json')
     context.check_cancel()
     digest=hashlib.sha256()
     with path.open('rb') as stream:
         while chunk:=stream.read(1024*1024):context.check_cancel();digest.update(chunk)
-    if digest.hexdigest()!=info['deb']['sha256']:raise ValueError('Checksum mismatch')
+    if digest.hexdigest()!=deb['sha256'].lower():raise ValueError('Checksum mismatch')
     context.check_cancel()
     result=subprocess.run(['dpkg-deb','--field',str(path),'Package','Version','Architecture'],capture_output=True,text=True,timeout=15,check=True)
     fields=dict(line.split(': ',1) for line in result.stdout.splitlines() if ': ' in line)
     architecture=subprocess.run(['dpkg','--print-architecture'],capture_output=True,text=True,timeout=5,check=True).stdout.strip()
-    if (fields.get('Package')!=PROJECT['deb']['package'] or fields.get('Version')!=info['version']
+    if (fields.get('Package')!=package or fields.get('Version')!=info['version']
         or fields.get('Architecture') not in ('all',architecture)):raise ValueError('Wrong package, version or architecture')
 
 

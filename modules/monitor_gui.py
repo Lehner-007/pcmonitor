@@ -3,6 +3,7 @@ import os
 import json
 import tempfile
 import threading
+from collections import deque
 from pathlib import Path
 import gi
 gi.require_version('Gtk','4.0')
@@ -15,7 +16,7 @@ from .device_details import eligible,current_state
 from .ram_snapshot import merge_snapshot
 from .jobs import Cancelled
 from .hardware_sources import occupancy_matches
-from .inventory import SECTIONS,inventory,device_state,differences,report,translate_value
+from .inventory import MAX_SESSION_EVENTS,SECTIONS,inventory,device_state,differences,report,retain_events,translate_value
 
 
 class Application(Gtk.Application):
@@ -29,7 +30,8 @@ class Application(Gtk.Application):
 
 class MonitorWindow(BaseWindow):
     def __init__(self,app):
-        self.snapshot=None;self.events=[];self.scan_running=False;self.poll_running=False
+        self._initial_scan_completed=False
+        self.snapshot=None;self.events=deque(maxlen=MAX_SESSION_EVENTS);self.events_omitted=0;self.scan_running=False;self.poll_running=False
         self.detail_windows={};self.detail_pending=set()
         self.section='board';self.previous=None;self.navigation_labels=[]
         super().__init__(app)
@@ -73,6 +75,14 @@ class MonitorWindow(BaseWindow):
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(),css,Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         GLib.idle_add(self.refresh)
 
+    def initial_update(self):
+        """Erstinventur vor der gemeinsamen Hintergrundprüfung ausführen."""
+        if not self.alive or self.closing:return False
+        if not self._initial_scan_completed or self.busy:
+            GLib.timeout_add(250,self.initial_update)
+            return False
+        return super().initial_update()
+
     def apply_language(self,code):
         super().apply_language(code)
         if self.lookup_action('refresh'):
@@ -94,7 +104,16 @@ class MonitorWindow(BaseWindow):
         if not hasattr(self,'heading'):return
         self.heading.set_label(self.tr('section_'+self.section))
         capture=(self.snapshot or {}).get('ram_capture')
-        self.note.set_label(self.tr('limits')+('\n'+self.tr(capture['status'])+' · '+capture.get('captured_at','')+' · '+self.tr(capture.get('query_mode','ram_mode_normal')) if self.section=='ram' and capture else ''))
+        note=self.tr('limits')
+        if self.section=='ram' and capture:
+            note+='\n'+self.tr(capture['status'])+' · '+capture.get('captured_at','')+' · '+self.tr(capture.get('query_mode','ram_mode_normal'))
+        if self.section=='events' and (self.events or self.events_omitted):
+            note+='\n'+self.tr('events_count').format(count=len(self.events))
+            if self.events:
+                note+='\n'+self.tr('events_coverage').format(start=self.events[0]['time'],end=self.events[-1]['time'])
+            if self.events_omitted:
+                note+='\n'+self.tr('events_omitted').format(count=self.events_omitted)
+        self.note.set_label(note)
         enabled=self.section not in ('board','cpu','sensors','system','events') and any(r['occupancy'] for r in (self.snapshot or {}).get('sections',{}).get(self.section,[]))
         self.occupancy.set_sensitive(enabled)
         if self.section=='events':
@@ -183,6 +202,7 @@ class MonitorWindow(BaseWindow):
         if action:action.set_enabled(not self.busy and not self.closing)
 
     def accept_inventory(self,result,notify_failure=True):
+        self._initial_scan_completed=True
         if not self.alive or self.closing:return False
         had_previous=self.snapshot is not None
         self.snapshot=merge_snapshot(self.snapshot,result)
@@ -239,7 +259,8 @@ class MonitorWindow(BaseWindow):
             for identity,state in checks.items():
                 if state is not True:self.invalidate_detail(identity,state)
             if current is not None:
-                new=differences(self.previous,current) if self.previous is not None else [];self.previous=current;self.events.extend(new)
+                new=differences(self.previous,current) if self.previous is not None else []
+                self.events_omitted+=retain_events(self.events,new,self.events.maxlen);self.previous=current
                 if new and self.section=='events':self.show_section()
             return False
         threading.Thread(target=work,daemon=True,name='device-events').start()
@@ -252,7 +273,7 @@ class MonitorWindow(BaseWindow):
         personal=Gtk.CheckButton(label=self.tr('export_personal'));events=Gtk.CheckButton(label=self.tr('export_events'))
         box.append(personal);box.append(events)
         def save(*_):
-            text=report(self.snapshot,self.tr,self.events if events.get_active() else (),personal.get_active())
+            text=report(self.snapshot,self.tr,self.events if events.get_active() else (),personal.get_active(),self.events_omitted if events.get_active() else 0)
             self.close_dialog(dialog)
             def write(path):
                 fd,tmp=tempfile.mkstemp(prefix='.pcmonitor-',dir=path.parent)

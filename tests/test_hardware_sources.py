@@ -65,10 +65,10 @@ class SourceTests(unittest.TestCase):
         self.assertIsNone(match_monitor(one,[one],[dict(output,edid=edid(2))]))
 
     def test_detect_virt_only_documented_none_exit(self):
-        with patch('modules.inventory.shutil.which',return_value='/bin/tool'),patch('modules.inventory.subprocess.run',return_value=subprocess.CompletedProcess([],1,'none\n','')):
+        with patch('modules.inventory.shutil.which',return_value='/bin/tool'),patch('modules.inventory.run_capped',return_value=('failed',1,'none\n','')):
             self.assertEqual(run(['systemd-detect-virt'],allowed_exits=((1,'none'),)),'none\n')
             self.assertEqual(run(['other-command']),'')
-        with patch('modules.inventory.shutil.which',return_value='/bin/tool'),patch('modules.inventory.subprocess.run',return_value=subprocess.CompletedProcess([],1,'kvm\n','')):
+        with patch('modules.inventory.shutil.which',return_value='/bin/tool'),patch('modules.inventory.run_capped',return_value=('failed',1,'kvm\n','')):
             self.assertEqual(run(['systemd-detect-virt'],allowed_exits=((1,'none'),)),'')
 
     def test_sensor_unique_paths(self):

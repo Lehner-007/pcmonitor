@@ -277,6 +277,7 @@
   "ram_fw_timeout": "dmidecode query timed out",
   "ram_fw_denied": "Elevated dmidecode query denied or cancelled",
   "ram_fw_failed": "dmidecode query failed",
+  "ram_fw_output_limit": "dmidecode output limit reached",
   "ram_fw_incomplete": "Firmware values incomplete or conflicting",
   "ram_fw_conflict": "Conflicting slot association or firmware values",
   "ram_fw_unmatched": "No unique firmware association for this slot",
@@ -301,5 +302,9 @@
   "admin_source_failed": "Source query failed",
   "admin_source_timeout": "Source query timed out",
   "admin_source_cancelled": "Source query cancelled",
+  "admin_source_output_limit": "Source output limit reached",
+  "events_count": "Stored events: {count}",
+  "events_coverage": "Coverage: {start} to {end}",
+  "events_omitted": "Older events omitted: {count}",
   "ram_firmware_short": "firmware"
 }

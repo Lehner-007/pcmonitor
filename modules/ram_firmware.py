@@ -2,8 +2,8 @@
 import os
 import re
 import shutil
-import subprocess
 from datetime import datetime
+from .processes import run_capped
 
 UNKNOWN='@unknown'
 
@@ -33,12 +33,12 @@ def parse_memory_devices(text):
     return devices
 
 
-def query_memory_firmware(elevated=False, source=None, admin_status=None):
+def query_memory_firmware(elevated=False, source=None, admin_status=None, cancel_event=None):
     """Use bundled helper output when elevated; never request elevation here."""
     captured=datetime.now().astimezone().strftime('%d.%m.%Y %H:%M:%S %Z')
     base=dict(captured_at=captured,devices={},warning='',elevated=elevated)
     if elevated:
-        statuses={'missing':'ram_fw_missing','timeout':'ram_fw_timeout','denied':'ram_fw_denied','cancelled':'ram_fw_denied','failed':'ram_fw_failed','unsafe':'ram_fw_failed'}
+        statuses={'missing':'ram_fw_missing','timeout':'ram_fw_timeout','denied':'ram_fw_denied','cancelled':'ram_fw_denied','failed':'ram_fw_failed','unsafe':'ram_fw_failed','output_limit':'ram_fw_output_limit'}
         if source is None:return {**base,'status':'ram_fw_admin_missing' if admin_status=='missing' else statuses.get(admin_status,'ram_fw_failed')}
         base['captured_at']=source['captured_at']
         if source['status']!='ok':return {**base,'status':statuses.get(source['status'],'ram_fw_failed')}
@@ -46,12 +46,15 @@ def query_memory_firmware(elevated=False, source=None, admin_status=None):
     else:
         tool=shutil.which('dmidecode')
         if not tool:return {**base,'status':'ram_fw_missing'}
-        try:result=subprocess.run([tool,'--type','17'],capture_output=True,text=True,errors='replace',timeout=8,check=False,env={**os.environ,'LC_ALL':'C'})
-        except subprocess.TimeoutExpired:return {**base,'status':'ram_fw_timeout'}
-        except OSError:return {**base,'status':'ram_fw_failed'}
-        if result.returncode:return {**base,'status':'ram_fw_failed'}
+        status,returncode,text,stderr=run_capped([tool,'--type','17'],timeout=8,cancel_event=cancel_event,
+            stdout_limit=2*1024*1024,stderr_limit=256*1024,env={**os.environ,'LC_ALL':'C'})
+        if status=='cancelled':
+            from .jobs import Cancelled
+            raise Cancelled()
+        if status=='timeout':return {**base,'status':'ram_fw_timeout'}
+        if status=='output_limit':return {**base,'status':'ram_fw_output_limit'}
+        if status!='ok' or returncode:return {**base,'status':'ram_fw_failed'}
         base['captured_at']=datetime.now().astimezone().strftime('%d.%m.%Y %H:%M:%S %Z')
-        text,stderr=result.stdout,result.stderr
     normalized=re.sub(r'\s+',' ',(text+'\n'+stderr).replace('#',''))
     warning='@ram_fw_smbios_warning' if re.search(r'SMBIOS.{0,250}not fully supported|not fully supported.{0,250}SMBIOS',normalized,re.I) else ''
     if warning:

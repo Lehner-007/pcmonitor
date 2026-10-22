@@ -3,7 +3,6 @@ import json
 import os
 import re
 import shutil
-import subprocess
 from datetime import datetime
 from pathlib import Path
 from .hardware_sources import (cpu_set,pci_address,slot_matches,nvidia_memory,dmidecode_speeds,ram_speed,xrandr_outputs,match_monitor,bluez_devices,sensor_origin,sensor_identity,lan_states,redact,wifi_metrics,slot_occupants)
@@ -11,9 +10,17 @@ from .hardware_sources import (cpu_set,pci_address,slot_matches,nvidia_memory,dm
 from .device_details import monitor_detail,bank_identity,fingerprint
 from .admin_probe import query_admin_sources
 from .ram_firmware import query_memory_firmware,module_firmware,sync_ram_row
+from .processes import run_capped
 
 SECTIONS = ('board','cpu','ram','gpu','display','usb','disk','lan','wifi','bluetooth','audio','reader','pci','sensors','system','events')
 UNKNOWN = '@unknown'
+MAX_SESSION_EVENTS = 1000
+
+
+def retain_events(events,new,limit=MAX_SESSION_EVENTS):
+    omitted=max(0,len(events)+len(new)-limit)
+    events.extend(new)
+    return omitted
 
 
 def read(path):
@@ -23,24 +30,28 @@ def read(path):
         return ''
 
 
-def run(args, diagnostics=None, timeout=8, allowed_exits=()):
+def run(args, diagnostics=None, timeout=8, allowed_exits=(), cancel_event=None):
     if not shutil.which(args[0]):
         if diagnostics is not None: diagnostics.append((args[0], 'missing'))
         return ''
-    try:
-        result = subprocess.run(args, capture_output=True, text=True, errors="replace", timeout=timeout,
-                                env={**os.environ, 'LC_ALL': 'C'}, check=False)
-        if result.returncode and (result.returncode,result.stdout.strip()) not in allowed_exits:
-            if diagnostics is not None: diagnostics.append((args[0], 'failed'))
-            return ''
-        return result.stdout
-    except (OSError, subprocess.TimeoutExpired):
-        if diagnostics is not None: diagnostics.append((args[0], 'timeout'))
+    status, returncode, stdout, _stderr = run_capped(
+        args, timeout=timeout, cancel_event=cancel_event,
+        env={**os.environ, 'LC_ALL': 'C'})
+    if status == 'cancelled':
+        from .jobs import Cancelled
+        raise Cancelled()
+    if status != 'ok' and not (status == 'failed' and (returncode, stdout.strip()) in allowed_exits):
+        if diagnostics is not None:
+            diagnostics.append((args[0], status))
         return ''
+    if returncode and (returncode, stdout.strip()) not in allowed_exits:
+        if diagnostics is not None: diagnostics.append((args[0], 'failed'))
+        return ''
+    return stdout
 
 
-def json_command(args, diagnostics):
-    try: return json.loads(run(args, diagnostics))
+def json_command(args, diagnostics, cancel_event=None):
+    try: return json.loads(run(args, diagnostics, cancel_event=cancel_event))
     except (ValueError, TypeError): return {}
 
 
@@ -51,6 +62,12 @@ def quantity(value):
             if value < 1024 or unit == 'TiB': return f'{value:.2f} {unit}'
             value /= 1024
     except (ValueError, TypeError): return UNKNOWN
+
+
+def rotation_label(value):
+    if type(value) is bool:return 'HDD' if value else '@nonrotating'
+    if type(value) is int and value in (0,1):return 'HDD' if value==1 else '@nonrotating'
+    return UNKNOWN
 
 
 def row(name, value='', occupancy='', personal=False, kind='property'):
@@ -71,11 +88,17 @@ def inventory(cancel_event=None):
     details_by_id={}
     captured=datetime.now().astimezone().strftime('%d.%m.%Y %H:%M:%S %Z')
     query_mode='ram_mode_normal'
+    def checkpoint():
+        if cancel_event and cancel_event.is_set():
+            from .jobs import Cancelled
+            raise Cancelled()
+    checkpoint()
     def add(section, name, value='', occupancy='', personal=False, kind='property'):
         item=row(name,value,occupancy,personal,kind)
         data[section].append(item)
         return item
     for key,filename in [('manufacturer','board_vendor'),('model','board_name'),('bios_vendor','bios_vendor'),('bios_version','bios_version'),('bios_date','bios_date')]:
+        checkpoint()
         value=read('/sys/class/dmi/id/'+filename)
         if key=='bios_date':
             try:value=datetime.strptime(value,'%m/%d/%Y').strftime('%d.%m.%Y')
@@ -100,9 +123,7 @@ def inventory(cancel_event=None):
     add('ram','total',quantity(int(total[1])*1024) if total else '')
     elevated=os.environ.get('PCMONITOR_ADMIN_QUERY')=='1'
     admin=query_admin_sources(cancel_event) if elevated else None
-    if cancel_event and cancel_event.is_set():
-        from .jobs import Cancelled
-        raise Cancelled()
+    checkpoint()
     hardware={}
     lshw_source=admin.get('sources',{}).get('lshw') if admin else None
     if lshw_source and lshw_source['status']=='ok':
@@ -113,11 +134,13 @@ def inventory(cancel_event=None):
         diagnostics.append(('admin_query','admin_done' if hardware else 'admin_failed'))
         add('system','admin_probe_status','@admin_probe_'+admin['status'])
         if lshw_source:add('system','admin_lshw_status','@admin_source_'+lshw_source['status'])
-    if not hardware:hardware=json_command(['lshw','-json'],diagnostics)
+    if not hardware:hardware=json_command(['lshw','-json'],diagnostics,cancel_event)
     captured=lshw_source['captured_at'] if hardware and query_mode=='ram_mode_admin' else datetime.now().astimezone().strftime('%d.%m.%Y %H:%M:%S %Z')
     hw=list(walk(hardware))
-    add('system','lshw_package',run(['dpkg-query','-W','--showformat=${Version}','lshw']).strip())
-    firmware=query_memory_firmware(elevated=elevated,source=admin.get('sources',{}).get('dmidecode') if admin else None,admin_status=admin['status'] if admin else None)
+    add('system','lshw_package',run(['dpkg-query','-W','--showformat=${Version}','lshw'],diagnostics,cancel_event=cancel_event).strip())
+    checkpoint()
+    firmware=query_memory_firmware(elevated=elevated,source=admin.get('sources',{}).get('dmidecode') if admin else None,admin_status=admin['status'] if admin else None,cancel_event=cancel_event)
+    checkpoint()
     add('system','ram_firmware_status','@'+firmware['status'])
     if firmware['warning']:add('system','ram_firmware_warning',firmware['warning'])
     # Keep successful firmware source data visible even if lshw cannot provide banks.
@@ -127,6 +150,7 @@ def inventory(cancel_event=None):
     speeds={}
     banks=[h for h in hw if str(h.get('id','')).startswith('bank:')]
     for h in banks:
+        checkpoint()
         size=h.get('size'); desc=h.get('description',''); empty='empty' in desc.lower()
         details=' · '.join(str(x) for x in [h.get('vendor') or UNKNOWN,h.get('product') or UNKNOWN,quantity(size) if size else UNKNOWN]) if not empty else ''
         item=add('ram',h.get('slot') or h.get('id'), details, 'empty' if empty else 'occupied' if size else 'unknown',kind='slot')
@@ -142,14 +166,15 @@ def inventory(cancel_event=None):
     if not banks:
         for key in ('slots','module_manufacturer','module_model','module_capacity','module_speed'):add('ram',key,'', 'unknown')
     pci_names={}
-    for block in run(['lspci','-vmm','-D'],diagnostics).split('\n\n'):
+    for block in run(['lspci','-vmm','-D'],diagnostics,cancel_event=cancel_event).split('\n\n'):
         fields=dict(re.findall(r'^(\w+):\s*(.*)$',block,re.M))
         if 'Slot' in fields: pci_names[fields['Slot']]=' · '.join(fields.get(k,'') for k in ('Vendor','Device')).strip(' ·')
     pci_devices=list(Path('/sys/bus/pci/devices').glob('*'))
     nvidia={}
     if any(read(p/'vendor')=='0x10de' and read(p/'class').startswith('0x03') for p in pci_devices):
-        nvidia=nvidia_memory(run(['nvidia-smi','--query-gpu=pci.bus_id,memory.total','--format=csv,noheader,nounits'],diagnostics))
+        nvidia=nvidia_memory(run(['nvidia-smi','--query-gpu=pci.bus_id,memory.total','--format=csv,noheader,nounits'],diagnostics,cancel_event=cancel_event))
     for p in pci_devices:
+        checkpoint()
         name=pci_names.get(p.name) or f'{read(p/"vendor")}:{read(p/"device")}'
         driver=(p/'driver').resolve().name if (p/'driver').exists() else UNKNOWN
         add('pci',p.name,f'{name} · {driver}',kind='component')
@@ -157,6 +182,7 @@ def inventory(cancel_event=None):
             add('gpu',p.name,name);add('gpu',p.name+' / driver',driver)
             add('gpu',p.name+' / VRAM',quantity(read(p/'mem_info_vram_total') or nvidia.get(pci_address(p.name))))
     for slot in Path('/sys/bus/pci/slots').glob('*'):
+        checkpoint()
         address=read(slot/'address'); matched=slot_occupants(address,pci_devices,read)
         item=add('pci','PCIe '+slot.name,', '.join(pci_names.get(p.name,p.name) for p in matched), 'occupied' if matched else 'unknown',kind='slot')
         if matched:
@@ -165,14 +191,16 @@ def inventory(cancel_event=None):
             details_by_id[identity]=dict(id=identity,family='pci',name='PCIe '+slot.name,fields=dict(pci_address=address,model=item['value']),devices=[dict(path=str(p),vendor=read(p/'vendor'),device=read(p/'device')) for p in matched])
     connectors=[]
     for p in Path('/sys/class/drm').glob('card*-*'):
+        checkpoint()
         if not (p/'status').exists():continue
         try:edid=(p/'edid').read_bytes()
         except OSError:edid=b''
         card=p.name.split('-',1)[0]
         gpu=(p.parent/card/'device').resolve().name
         connectors.append(dict(path=p,name=p.name,gpu=gpu,status=read(p/'status'),edid=edid))
-    outputs=xrandr_outputs(run(['xrandr','--prop'],diagnostics))
+    outputs=xrandr_outputs(run(['xrandr','--prop'],diagnostics,cancel_event=cancel_event))
     for connector in connectors:
+        checkpoint()
         model='';edid=connector['edid']
         for offset in (54,72,90,108):
             if edid[offset:offset+5]==b'\0\0\0\xfc\0':model=edid[offset+5:offset+18].decode('ascii','replace').strip('\n \0')
@@ -185,22 +213,25 @@ def inventory(cancel_event=None):
             detail=monitor_detail(connector,output,pci_names.get(connector['gpu'],''))
             item['device_id']=detail['id'];details_by_id[detail['id']]=detail
     for p in Path('/sys/bus/usb/devices').glob('*'):
+        checkpoint()
         if not (p/'idVendor').exists():continue
         name=' · '.join(filter(None,[read(p/'manufacturer'),read(p/'product'),read(p/'idVendor')+':'+read(p/'idProduct')]))
         hub=read(p/'bDeviceClass')=='09'
         add('usb',p.name,name+(' · @hub' if hub else '')+' · @logical',kind='hub' if hub else 'component')
         if re.search(r'card.?reader|sd reader',name,re.I):add('reader',p.name,name+' · @component')
-    disks=json_command(['lsblk','--json','--bytes','--output','NAME,TYPE,SIZE,MODEL,TRAN,ROTA,FSTYPE,MOUNTPOINTS'],diagnostics)
+    disks=json_command(['lsblk','--json','--bytes','--output','NAME,TYPE,SIZE,MODEL,TRAN,ROTA,FSTYPE,MOUNTPOINTS'],diagnostics,cancel_event)
     for d in walk_disks(disks.get('blockdevices',[]) if isinstance(disks,dict) else []):
-        details=[d.get('model') or d['name'],quantity(d.get('size')),d.get('tran') or UNKNOWN, ('HDD' if d.get('rota') else '@nonrotating') if d.get('type')=='disk' else d.get('type',''),d.get('fstype') or '']
+        checkpoint()
+        details=[d.get('model') or d['name'],quantity(d.get('size')),d.get('tran') or UNKNOWN, rotation_label(d.get('rota')) if d.get('type')=='disk' else d.get('type',''),d.get('fstype') or '']
         for mount in d.get('mountpoints') or []:
             if mount:
                 try:
                     stat=os.statvfs(mount); details.append(f'@used {quantity((stat.f_blocks-stat.f_bfree)*stat.f_frsize)} / {quantity(stat.f_blocks*stat.f_frsize)}')
                 except OSError:details.append(UNKNOWN)
         add('disk','/dev/'+d['name'],' · '.join(filter(None,details)),kind='partition' if d.get('type')=='part' else 'drive' if d.get('type')=='disk' else 'logical')
-    addresses=json_command(['ip','-j','address'],diagnostics)
+    addresses=json_command(['ip','-j','address'],diagnostics,cancel_event)
     for p in Path('/sys/class/net').glob('*'):
+        checkpoint()
         section='wifi' if (p/'wireless').exists() else 'lan'
         virtual=not (p/'device').exists(); driver=(p/'device/driver').resolve().name if (p/'device/driver').exists() else UNKNOWN
         add(section,p.name,f'{read(p/"operstate") or UNKNOWN} · {driver} · '+ ('@virtual' if virtual else '@logical'),kind='virtual' if virtual else 'adapter')
@@ -215,7 +246,7 @@ def inventory(cancel_event=None):
                 if a.get('ifname')==p.name:
                     for addr in a.get('addr_info',[]):add(section,p.name+' IP',addr.get('local'),personal=True)
         if section=='wifi':
-            link=run(['iw','dev',p.name,'link'],diagnostics)
+            link=run(['iw','dev',p.name,'link'],diagnostics,cancel_event=cancel_event)
             metrics=wifi_metrics(link)
             add('wifi',p.name+' SSID',metrics['ssid'],personal=True)
             for label in ('signal','rx_bitrate','tx_bitrate'):
@@ -223,9 +254,11 @@ def inventory(cancel_event=None):
     for p in Path('/sys/class/mmc_host').glob('*'):
         add('reader',p.name,'@logical','unknown')
     for p in Path('/sys/class/bluetooth').glob('*'):
+        checkpoint()
         add('bluetooth',p.name,(read(p/'name') or p.name)+' · @component')
     bluetooth=bluez_devices(diagnostics)
     for device in bluetooth or []:
+        checkpoint()
         add('bluetooth',device['key'],device['kind']+' · '+device['modalias']+' · '+('@connected' if device['connected'] else '@disconnected'),kind='component')
         add('bluetooth',device['key']+' / alias',device['alias'],personal=True)
         add('bluetooth',device['key']+' / MAC',device['address'],personal=True)
@@ -234,12 +267,14 @@ def inventory(cancel_event=None):
         match=re.match(r'\s*(\d+) \[([^]]+)\]:(.*)',line)
         if match:audio_descriptions['card'+match[1]]=match[3].strip()
     for p in Path('/sys/class/sound').glob('card[0-9]*'):
+        checkpoint()
         add('audio',p.name,audio_descriptions.get(p.name) or read(p/'id'))
     if Path('/sys/class/sound').exists():
         for category in ('sinks','sources'):
-            endpoints=json_command(['pactl','--format=json','list',category],diagnostics)
-            default=run(['pactl','get-default-'+('sink' if category=='sinks' else 'source')],diagnostics).strip()
+            endpoints=json_command(['pactl','--format=json','list',category],diagnostics,cancel_event)
+            default=run(['pactl','get-default-'+('sink' if category=='sinks' else 'source')],diagnostics,cancel_event=cancel_event).strip()
             for endpoint in endpoints if isinstance(endpoints,list) else []:
+                checkpoint()
                 index=str(endpoint.get('index','?'));name=str(endpoint.get('name',''))
                 prefix=('@audio_output' if category=='sinks' else '@audio_input')+' '+index
                 ports=endpoint.get('active_port') or UNKNOWN
@@ -248,13 +283,15 @@ def inventory(cancel_event=None):
                 # Server descriptions/names may include user-defined identities.
                 add('audio',prefix+' / @description',endpoint.get('description') or name,personal=True)
     for p in Path('/sys/class/hwmon').glob('*'):
+        checkpoint()
         for sensor in list(p.glob('temp*_input'))+list(p.glob('fan*_input')):
+            checkpoint()
             raw=read(sensor)
             try:value=float(raw);value=value/1000 if sensor.name.startswith('temp') else value
             except ValueError:continue
             label=read(sensor.with_name(sensor.name.replace('_input','_label'))) or sensor.stem
             add('sensors',read(p/'name')+' / '+label+' / '+sensor_identity(p),f'{value:g} '+('°C' if sensor.name.startswith('temp') else 'RPM'))
-    virt=run(['systemd-detect-virt'],diagnostics,allowed_exits=((1,'none'),)).strip()
+    virt=run(['systemd-detect-virt'],diagnostics,allowed_exits=((1,'none'),),cancel_event=cancel_event).strip()
     virt='@no_virtualization' if virt=='none' else virt or UNKNOWN
     for key,value in [('kernel',os.uname().release),('architecture',os.uname().machine),('os',next((v.split('=',1)[1].strip('"') for v in read('/etc/os-release').splitlines() if v.startswith('PRETTY_NAME=')),'')),('virtualization',virt)]:add('system',key,value)
     for command,state in dict(diagnostics).items():add('system',command,'@'+state)
@@ -268,6 +305,7 @@ def inventory(cancel_event=None):
         for record in group:
             if record.get('device_id') in ambiguous:record.pop('device_id',None)
     bank_rows=[r for r in data['ram'] if r.get('slot_id')]
+    checkpoint()
     confirmed=bool(bank_rows) and len({r['slot_id'] for r in bank_rows})==len(bank_rows) and all(r['occupancy']=='empty' or (r['occupancy']=='occupied' and r.get('device_id') in details_by_id) for r in bank_rows)
     capture=dict(confirmed=confirmed,captured_at=captured,query_mode=query_mode,status='ram_capture_ok' if confirmed else 'ram_capture_unavailable')
     return dict(firmware_capture=firmware,ram_capture=capture,created=datetime.now().astimezone().strftime('%d.%m.%Y %H:%M:%S %Z'),sections=data,details=details_by_id)
@@ -320,7 +358,7 @@ def differences(old,new):
     return changes
 
 
-def report(snapshot,tr,events=(),personal=False):
+def report(snapshot,tr,events=(),personal=False,events_omitted=0):
     lines=['pcmonitor',tr('created')+': '+snapshot['created'],tr('limits'),'']
     for section,rows in snapshot['sections'].items():
         if section=='events':continue
@@ -345,8 +383,12 @@ def report(snapshot,tr,events=(),personal=False):
                 text=tr(key)+': '+translate_value(str(value),tr)
                 lines.append(text if personal else redact(text))
         lines.append('')
-    if events:
+    if events or events_omitted:
         lines.append(tr('section_events'))
+        if events:
+            lines.append(tr('events_coverage').format(start=events[0]['time'],end=events[-1]['time']))
+        if events_omitted:
+            lines.append(tr('events_omitted').format(count=events_omitted))
         for e in events:
             if e.get('personal') and not personal:continue
             line=f"{e['time']} | {tr(e['kind'])} | {e['device']} | {e['connector']} | {e['state']}"
