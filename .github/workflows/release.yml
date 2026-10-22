@@ -1,6 +1,7 @@
 name: Release
 on:
   push:
+    branches: [main]
     tags: ['v*']
 permissions:
   contents: write
@@ -9,11 +10,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Verify tag and version
+        id: release_state
         shell: bash
         run: |
-          test "${GITHUB_REF_NAME}" = "v$(cat VERSION)"
+          version="$(cat VERSION)"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            test "${GITHUB_REF_NAME}" = "v${version}"
+          else
+            git rev-parse --verify "refs/tags/v${version}" >/dev/null
+            if gh release view "v${version}" >/dev/null 2>&1; then
+              echo "skip_release=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "skip_release=false" >> "$GITHUB_OUTPUT"
+              git checkout --detach "v${version}"
+            fi
+          fi
       - name: Check version and package
+        if: steps.release_state.outputs.skip_release != 'true'
         shell: bash
         run: |
           git describe --tags --exact-match | grep -Fx "v$(cat VERSION)"
@@ -21,6 +37,7 @@ jobs:
           ./erstelledeb.sh
           sha256sum "pcmonitor-$(cat VERSION).zip" "dist/pcmonitor_$(cat VERSION)_all.deb" > SHA256SUMS
       - name: Draft, upload and publish
+        if: steps.release_state.outputs.skip_release != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
