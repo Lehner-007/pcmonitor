@@ -9,11 +9,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Select existing version tag
+      - name: Verify tag and version
         shell: bash
         run: |
-          git fetch --tags origin
-          git checkout --detach "v$(cat VERSION)"
+          test "${GITHUB_REF_NAME}" = "v$(cat VERSION)"
       - name: Check version and package
         shell: bash
         run: |
