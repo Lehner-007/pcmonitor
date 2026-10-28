@@ -7,7 +7,7 @@ from zipfile import ZipFile, ZIP_DEFLATED
 import re
 root=Path.cwd();version=(root/'VERSION').read_text().strip()
 if not re.fullmatch(r'\d+\.\d+\.\d+',version):raise ValueError('Invalid VERSION')
-files=[root/name for name in ('VERSION','projekt.json','pcmonitor.py','README.md','CHANGELOG.md','LICENSE')]
+files=[root/name for name in ('VERSION','projekt.json','pcmonitor.py','README.md','CHANGELOG.md','LICENSE','.start.sh','start-admin.sh')]
 for folder in ('modules','assets','lang','help'):
  for p in (root/folder).rglob('*'):
   if p.is_symlink():raise ValueError('Symlink in package: '+str(p))

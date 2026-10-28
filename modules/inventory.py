@@ -5,7 +5,7 @@ import re
 import shutil
 from datetime import datetime
 from pathlib import Path
-from .hardware_sources import (cpu_set,pci_address,slot_matches,nvidia_memory,dmidecode_speeds,ram_speed,xrandr_outputs,match_monitor,bluez_devices,sensor_origin,sensor_identity,lan_states,redact,wifi_metrics,slot_occupants)
+from .hardware_sources import (cpu_set,pci_address,slot_matches,nvidia_memory,dmidecode_speeds,ram_speed,xrandr_outputs,match_monitor,bluez_devices,sensor_origin,sensor_identity,lan_states,lan_diagnostics,redact,wifi_metrics,slot_occupants)
 
 from .device_details import monitor_detail,bank_identity,fingerprint
 from .admin_probe import query_admin_sources
@@ -235,8 +235,14 @@ def inventory(cancel_event=None):
         section='wifi' if (p/'wireless').exists() else 'lan'
         virtual=not (p/'device').exists(); driver=(p/'device/driver').resolve().name if (p/'device/driver').exists() else UNKNOWN
         add(section,p.name,f'{read(p/"operstate") or UNKNOWN} · {driver} · '+ ('@virtual' if virtual else '@logical'),kind='virtual' if virtual else 'adapter')
+        link=lan_diagnostics(p)
+        state_key=link['state'] if link['state'] in ('up','down','dormant','lowerlayerdown','notpresent','testing') else 'unknown'
+        add(section,p.name+' / @operstate','@operstate_'+state_key)
+        add(section,p.name+' / @link_diagnostic','@'+link['reason'])
+        for field in ('carrier_changes','carrier_up_count','carrier_down_count'):
+            if field in link:add(section,p.name+' / @'+field,link[field])
         if section=='lan' and not virtual:
-            carrier=read(p/'carrier')
+            carrier=link['carrier']
             add('lan',p.name+' / @carrier', '@connected' if carrier=='1' else '@disconnected' if carrier=='0' else UNKNOWN)
             speed=read(p/'speed')
             add('lan',p.name+' / @link_speed',speed+' Mbit/s' if speed.isdigit() and int(speed)>0 else UNKNOWN)

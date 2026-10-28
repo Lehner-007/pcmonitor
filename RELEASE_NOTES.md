@@ -1,3 +1,5 @@
-pcmonitor 0.5.4
+pcmonitor 0.6.0
 
-Behebt die Prozessbereinigung bei Zeitüberschreitung und Abbruch, auch wenn Nachkommen nach dem Ende des Hauptprozesses Ausgabepipes offen halten. Prozessausgaben werden nichtblockierend gelesen; die Bereinigungszeit ist begrenzt. Regressionstests decken geerbte Pipes und SIGTERM-ignorierende Nachkommen ab.
+- Zeigt Kernel-Betriebszustand, Linksignal und verfügbare Linkwechselzähler in der Netzwerkübersicht.
+- Das Benutzer-ZIP enthält jetzt die dokumentierten Starter .start.sh und start-admin.sh.
+- Die Anwendung nimmt weiterhin nur lesende Bestandsaufnahmen vor.

@@ -1,3 +1,8 @@
+## 0.6.0 – 28.10.2026 (Entwicklung)
+
+- Kernelstatus und verfügbare Linkwechselzähler in der Netzwerkübersicht anzeigen.
+- Die dokumentierten Starter `.start.sh` und `start-admin.sh` in die ZIP-Positivliste aufnehmen.
+
 ## 0.5.4 – 22.10.2026
 
 - Prozessausgaben nichtblockierend mit selectors lesen; keine blockierenden Leserthreads.

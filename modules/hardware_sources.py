@@ -167,6 +167,30 @@ def lan_states(path):
     return read_field('operstate') or 'unknown', {'1':'connected','0':'disconnected'}.get(carrier,'unknown')
 
 
+def lan_diagnostics(path):
+    """Return read-only kernel link state and counters without inferring a cause."""
+    path=Path(path)
+    def read_field(name):
+        try:return (path/name).read_text().strip()
+        except OSError:return ''
+    state=(read_field('operstate') or 'unknown').lower()
+    carrier=read_field('carrier') if (path/'device').exists() else ''
+    dormant=read_field('dormant')
+    if state=='up' and carrier=='1':reason='link_detected'
+    elif state=='down' and carrier=='0':reason='no_carrier'
+    elif state=='dormant' or dormant=='1':reason='link_dormant'
+    elif state=='lowerlayerdown':reason='lower_layer_down'
+    elif state=='down':reason='interface_down'
+    elif state=='notpresent':reason='device_not_present'
+    elif state=='up':reason='interface_up_link_unconfirmed'
+    else:reason='state_unconfirmed'
+    result={'state':state,'carrier':carrier,'reason':reason}
+    for field in ('carrier_changes','carrier_up_count','carrier_down_count'):
+        value=read_field(field)
+        if value.isdigit():result[field]=value
+    return result
+
+
 def sensor_identity(path):
     """Show available device/model names, retaining the unambiguous sysfs origin."""
     origin=Path(sensor_origin(path))

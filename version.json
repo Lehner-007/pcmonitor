@@ -1,1 +1,9 @@
-{"program_id":"pcmonitor","version":"0.5.4","deb":{"url":"https://github.com/Lehner-007/pcmonitor/releases/download/v0.5.4/pcmonitor_0.5.4_all.deb","filename":"pcmonitor_0.5.4_all.deb","sha256":"68b14f7105d694af1f2616595c927b7f4b241ac260d9dc873452fb93c2139a68"}}
+{
+  "program_id": "pcmonitor",
+  "version": "0.6.0",
+  "deb": {
+    "url": "https://github.com/Lehner-007/pcmonitor/releases/download/v0.6.0/pcmonitor_0.6.0_all.deb",
+    "filename": "pcmonitor_0.6.0_all.deb",
+    "sha256": "d54728101f6b818d876acb295ab01126b5d6d4e320925e72a379312cb2e48597"
+  }
+}

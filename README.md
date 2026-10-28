@@ -1,4 +1,8 @@
-# pcmonitor 0.5.4
+# pcmonitor 0.6.0
+
+## Entwicklungsstand 0.6.0
+
+Die Netzwerkübersicht zeigt zusätzlich die vom Kernel gemeldeten Betriebs- und Linkzustände sowie verfügbare Linkwechselzähler. Einordnungstexte beschreiben nur die gelesenen Werte; sie behaupten weder eine Ursache noch die Erreichbarkeit eines Gegenübers.
 
 Lesende Hardware-Bestandsaufnahme für Linux Mint / Cinnamon mit GTK 4.
 
